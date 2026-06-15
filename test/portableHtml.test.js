@@ -11,7 +11,8 @@ test("assembles a portable study HTML document with tables and glossary anchors"
         pageNumber: 8,
         blocks: [
           { id: "p8-b1", type: "heading", level: 1, text: "Vibe CodingからAgentic Engineeringへ" },
-          { id: "p8-b2", type: "paragraph", text: "Vibe CodingはカジュアルなAI支援開発です。" },
+          { id: "p8-b2", type: "paragraph", text: "Vibe CodingはカジュアルなAI支援開発です。\n検証を強化します。" },
+          { id: "p8-list1", type: "bullet_list", items: ["仕様を分ける", "テストで確認する"] },
           {
             id: "p8-t1",
             type: "learning_table",
@@ -35,6 +36,10 @@ test("assembles a portable study HTML document with tables and glossary anchors"
   assert.match(html, /<!doctype html>/i);
   assert.match(html, /<html lang="ja">/);
   assert.match(html, /id="p8-b2"/);
+  assert.match(html, /Vibe CodingはカジュアルなAI支援開発です。\n検証を強化します。/);
+  assert.match(html, /<ul id="p8-list1" class="text-list">/);
+  assert.match(html, /<li>仕様を分ける<\/li>/);
+  assert.match(html, /white-space: pre-line/);
   assert.match(html, /<table/);
   assert.match(html, /Glossary &amp; Index/);
   assert.match(html, /href="#p8-b2"/);

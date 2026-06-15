@@ -43,11 +43,23 @@ function renderBlock(block) {
     return renderTable(block);
   }
 
+  if (block.type === "bullet_list" || block.type === "ordered_list") {
+    return renderList(block);
+  }
+
   if (block.type === "embedded_figure") {
     return renderFigure(block);
   }
 
   return `<p id="${escapeAttribute(block.id)}">${escapeHtml(block.text || "")}</p>`;
+}
+
+function renderList(block) {
+  const tag = block.type === "ordered_list" ? "ol" : "ul";
+  const items = block.items || [];
+  return `<${tag} id="${escapeAttribute(block.id)}" class="text-list">
+    ${items.map((item) => `<li>${escapeHtml(item)}</li>`).join("\n")}
+  </${tag}>`;
 }
 
 function renderTable(block) {
@@ -103,15 +115,18 @@ function portableCss() {
   return `
 body { margin: 0; font-family: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif; color: #171717; background: #f6f7f9; }
 .document { max-width: 980px; margin: 0 auto; padding: 32px 18px 56px; }
-.document__header, .page, .glossary { background: #fff; border: 1px solid #d9dde4; border-radius: 8px; padding: 20px; margin-bottom: 18px; }
+.document__header, .page, .glossary { background: #fff; border: 1px solid #d9dde4; border-radius: 8px; padding: 22px; margin-bottom: 18px; }
 .document__header h1 { margin: 0 0 8px; font-size: 28px; }
 .document__header p, .page__number { color: #5d6470; }
-.page__number { font-size: 13px; margin-bottom: 12px; }
-h1, h2, h3 { line-height: 1.25; }
-p { line-height: 1.75; }
+.page__number { font-size: 13px; margin-bottom: 18px; }
+h1, h2, h3 { line-height: 1.25; margin: 1.4em 0 0.55em; }
+.page > h1:first-of-type, .page > h2:first-of-type, .page > h3:first-of-type { margin-top: 0; }
+p { line-height: 1.85; margin: 0 0 1.15em; white-space: pre-line; overflow-wrap: anywhere; }
+.text-list { margin: 0 0 1.2em 1.4em; padding: 0; line-height: 1.75; }
+.text-list li { margin-bottom: 0.45em; white-space: pre-line; overflow-wrap: anywhere; }
 table { width: 100%; border-collapse: collapse; margin: 16px 0; table-layout: auto; }
 caption { text-align: left; font-weight: 700; margin-bottom: 8px; }
-th, td { border: 1px solid #cfd5df; padding: 10px; vertical-align: top; line-height: 1.55; }
+th, td { border: 1px solid #cfd5df; padding: 10px; vertical-align: top; line-height: 1.6; white-space: pre-line; overflow-wrap: anywhere; }
 th { background: #eef2f7; text-align: left; }
 figure { margin: 16px 0; }
 img { max-width: 100%; height: auto; display: block; }
