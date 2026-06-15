@@ -33,12 +33,14 @@ function render() {
 
           <label class="field">
             <span>翻訳先言語</span>
-            <select id="targetLanguage">
-              <option value="Japanese">日本語</option>
-              <option value="English">English</option>
-              <option value="Korean">한국어</option>
-              <option value="Chinese">中文</option>
-            </select>
+            <input id="targetLanguage" type="text" value="Japanese" list="targetLanguageSuggestions" placeholder="例: Japanese, Japanese for high school students, 簡体字中国語" required>
+            <datalist id="targetLanguageSuggestions">
+              <option value="Japanese"></option>
+              <option value="English"></option>
+              <option value="Korean"></option>
+              <option value="Simplified Chinese"></option>
+              <option value="Traditional Chinese"></option>
+            </datalist>
           </label>
 
           <label class="field">
@@ -94,11 +96,11 @@ async function runWorkflow(event) {
 
   const pdfFile = document.querySelector("#pdfFile").files[0];
   const apiKey = document.querySelector("#geminiKey").value.trim();
-  const targetLanguage = document.querySelector("#targetLanguage").value;
+  const targetLanguage = document.querySelector("#targetLanguage").value.trim();
   const shouldSaveKey = document.querySelector("#saveKey").checked;
 
-  if (!pdfFile || !apiKey) {
-    addStatus("PDFとGemini Keyを入力してください。", "error");
+  if (!pdfFile || !apiKey || !targetLanguage) {
+    addStatus("PDF、Gemini Key、翻訳先言語を入力してください。", "error");
     return;
   }
 
@@ -209,13 +211,12 @@ function makeDownloadUrl(html) {
 }
 
 function languageCode(language) {
-  const codes = {
-    Japanese: "ja",
-    English: "en",
-    Korean: "ko",
-    Chinese: "zh",
-  };
-  return codes[language] || "ja";
+  const normalized = String(language || "").toLowerCase();
+  if (normalized.includes("english") || normalized.includes("英語")) return "en";
+  if (normalized.includes("korean") || normalized.includes("韓国語") || normalized.includes("朝鮮語")) return "ko";
+  if (normalized.includes("chinese") || normalized.includes("中国語") || normalized.includes("中文")) return "zh";
+  if (normalized.includes("japanese") || normalized.includes("日本語")) return "ja";
+  return "ja";
 }
 
 function escapeAttribute(value) {

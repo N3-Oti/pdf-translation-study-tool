@@ -20,7 +20,7 @@ test("builds a document analysis request that references the uploaded PDF file",
 
 test("builds a translation request that preserves readable document structure", () => {
   const request = buildTranslationRequest({
-    targetLanguage: "Japanese",
+    targetLanguage: "Japanese for high school students",
     segment: {
       pages: [
         {
@@ -36,6 +36,7 @@ test("builds a translation request that preserves readable document structure", 
   });
 
   const prompt = request.contents[0].parts[0].text;
+  assert.match(prompt, /Japanese for high school students/);
   assert.match(prompt, /list item/);
   assert.match(prompt, /Do not merge multiple paragraphs/);
   assert.match(prompt, /intentional line breaks/);
