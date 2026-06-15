@@ -1,31 +1,33 @@
 # PDF Translation Study Tool
 
-Static browser app for translating uploaded PDFs into downloadable study HTML using the user's Gemini Key.
+アップロードしたPDFを解析・翻訳し、学習用HTMLとしてダウンロードできる静的ブラウザアプリです。
+Gemini APIの呼び出しは利用者のブラウザから直接行い、利用者自身のGemini Keyを使います。
 
-## Scope
+## スコープ
 
-This folder is intended to be a standalone project. It does not depend on the parent workspace at runtime.
+このフォルダは単独で動作するプロジェクトです。実行時に親ワークスペースへ依存しません。
 
-## Development
+## 開発
 
 ```powershell
 npm test
 npm start
 ```
 
-The MVP is designed for static hosting on Cloudflare Pages. Gemini API calls are made directly from the user's browser with their own key.
+現在のMVPは静的ホスティングで動作する構成です。サーバー側のAPIやビルド工程は不要です。
 
-## Static Hosting
+## 静的ホスティング
 
-Serve the `src/` directory as static files. No build step is required for the current MVP.
+`src/` ディレクトリを静的ファイルとして配信してください。現在のMVPではビルドステップは不要です。
 
 ## GitHub Pages
 
-This repository includes a GitHub Actions workflow for GitHub Pages. It runs the test suite and deploys the `src/` directory directly, with no build step.
+このリポジトリにはGitHub Pages用のGitHub Actions workflowが含まれています。
+workflowはテストを実行したあと、`src/` ディレクトリをそのままデプロイします。
 
-1. Push this repository to GitHub.
-2. In GitHub, open `Settings` -> `Pages`.
-3. Under `Build and deployment`, set `Source` to `GitHub Actions`.
-4. Push to `main`, or run the `Deploy GitHub Pages` workflow manually from the `Actions` tab.
+1. このリポジトリをGitHubへpushします。
+2. GitHubで `Settings` -> `Pages` を開きます。
+3. `Build and deployment` の `Source` を `GitHub Actions` に設定します。
+4. `main` にpushするか、`Actions` タブから `Deploy GitHub Pages` workflowを手動実行します。
 
-The app uses relative asset paths, so it works from a project Pages URL such as `https://USER.github.io/REPOSITORY/`.
+アプリは相対パスでアセットを読み込むため、`https://USER.github.io/REPOSITORY/` のようなプロジェクトPages URLでも動作します。
