@@ -32,6 +32,8 @@ function render() {
             <option value="ja" ${state.uiLanguage === "ja" ? "selected" : ""}>JA</option>
             <option value="en" ${state.uiLanguage === "en" ? "selected" : ""}>EN</option>
             <option value="ko" ${state.uiLanguage === "ko" ? "selected" : ""}>KR</option>
+            <option value="zh-Hans" ${state.uiLanguage === "zh-Hans" ? "selected" : ""}>简中</option>
+            <option value="zh-Hant" ${state.uiLanguage === "zh-Hant" ? "selected" : ""}>繁中</option>
           </select>
         </label>
       </header>
@@ -351,6 +353,56 @@ function uiTextDictionary() {
       htmlGenerated: "Portable HTML을 생성했습니다.",
       failed: "변환에 실패했습니다.",
       summary: (pages, terms, figures) => `${pages}페이지, Preserved Term ${terms}개, Embedded Figure ${figures}개를 포함한 HTML을 생성했습니다.`,
+    },
+    "zh-Hans": {
+      tagline: "使用 Gemini Key 将 PDF 转换为学习用翻译 HTML。",
+      uiLanguage: "UI",
+      targetLanguage: "目标语言",
+      targetLanguagePlaceholder: "例如：Japanese, Japanese for high school students, 简体中文",
+      saveKey: "保存在此设备上",
+      privacyNote: "Gemini Key 和 PDF 会从此浏览器发送到 Gemini API。本应用的服务器不会保存它们。",
+      start: "开始转换",
+      running: "处理中...",
+      download: "下载 HTML",
+      statusTitle: "处理状态",
+      initialStatus: "请选择 PDF。",
+      preview: "预览",
+      missingInputs: "请输入 PDF、Gemini Key 和目标语言。",
+      keyApplied: "已应用 Gemini Key 设置。",
+      preparingSnapshots: "正在浏览器中准备 PDF 页面图像。",
+      snapshotsReady: (count) => `已准备 ${count} 页图像。`,
+      uploadComplete: "PDF 上传完成。",
+      analysisRunning: "正在执行 Document Analysis Pass。",
+      analysisReceived: "已接收 Document Model。",
+      translatingSegment: (current, total) => `正在翻译 Translation Segment ${current}/${total}。`,
+      htmlGenerated: "已生成 Portable HTML。",
+      failed: "转换失败。",
+      summary: (pages, terms, figures) => `已生成包含 ${pages} 页、${terms} 个 Preserved Term、${figures} 个 Embedded Figure 的 HTML。`,
+    },
+    "zh-Hant": {
+      tagline: "使用 Gemini Key 將 PDF 轉換為學習用翻譯 HTML。",
+      uiLanguage: "UI",
+      targetLanguage: "目標語言",
+      targetLanguagePlaceholder: "例如：Japanese, Japanese for high school students, 繁體中文",
+      saveKey: "儲存在此裝置上",
+      privacyNote: "Gemini Key 和 PDF 會從此瀏覽器傳送到 Gemini API。本應用程式的伺服器不會儲存它們。",
+      start: "開始轉換",
+      running: "處理中...",
+      download: "下載 HTML",
+      statusTitle: "處理狀態",
+      initialStatus: "請選擇 PDF。",
+      preview: "預覽",
+      missingInputs: "請輸入 PDF、Gemini Key 和目標語言。",
+      keyApplied: "已套用 Gemini Key 設定。",
+      preparingSnapshots: "正在瀏覽器中準備 PDF 頁面影像。",
+      snapshotsReady: (count) => `已準備 ${count} 頁影像。`,
+      uploadComplete: "PDF 上傳完成。",
+      analysisRunning: "正在執行 Document Analysis Pass。",
+      analysisReceived: "已接收 Document Model。",
+      translatingSegment: (current, total) => `正在翻譯 Translation Segment ${current}/${total}。`,
+      htmlGenerated: "已產生 Portable HTML。",
+      failed: "轉換失敗。",
+      summary: (pages, terms, figures) => `已產生包含 ${pages} 頁、${terms} 個 Preserved Term、${figures} 個 Embedded Figure 的 HTML。`,
     },
   };
 }

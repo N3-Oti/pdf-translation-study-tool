@@ -56,7 +56,7 @@ select {
 }
 
 .ui-language select {
-  min-width: 76px;
+  min-width: 88px;
   border: 1px solid #c9d0dc;
   border-radius: 6px;
   padding: 8px 10px;
