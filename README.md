@@ -1,5 +1,7 @@
 # PDF Translation Study Tool
 
+[English](README.en.md)
+
 アップロードしたPDFを解析・翻訳し、学習用HTMLとしてダウンロードできる静的ブラウザアプリです。
 Gemini APIの呼び出しは利用者のブラウザから直接行い、利用者自身のGemini Keyを使います。
 
