@@ -1,0 +1,10 @@
+{
+  "name": "pdf-translation-study-tool",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "test": "node scripts/run-tests.mjs",
+    "start": "node scripts/serve.mjs"
+  }
+}
