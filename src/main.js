@@ -10,18 +10,30 @@ const app = document.querySelector("#app");
 const state = {
   portableHtml: "",
   running: false,
+  uiLanguage: localStorage.getItem("uiLanguage") || "ja",
 };
 
 render();
 
 function render() {
+  const labels = uiText();
+  const savedKey = loadDeviceSavedKey();
+
   app.innerHTML = `
     <section class="shell">
       <header class="topbar">
         <div>
           <h1>PDF Translation Study Tool</h1>
-          <p>Gemini KeyでPDFを学習用の翻訳HTMLに変換します。</p>
+          <p>${labels.tagline}</p>
         </div>
+        <label class="ui-language">
+          <span>${labels.uiLanguage}</span>
+          <select id="uiLanguage">
+            <option value="ja" ${state.uiLanguage === "ja" ? "selected" : ""}>JA</option>
+            <option value="en" ${state.uiLanguage === "en" ? "selected" : ""}>EN</option>
+            <option value="ko" ${state.uiLanguage === "ko" ? "selected" : ""}>KR</option>
+          </select>
+        </label>
       </header>
 
       <form class="workspace" id="workflow">
@@ -32,8 +44,8 @@ function render() {
           </label>
 
           <label class="field">
-            <span>翻訳先言語</span>
-            <input id="targetLanguage" type="text" value="Japanese" list="targetLanguageSuggestions" placeholder="例: Japanese, Japanese for high school students, 簡体字中国語" required>
+            <span>${labels.targetLanguage}</span>
+            <input id="targetLanguage" type="text" value="Japanese" list="targetLanguageSuggestions" placeholder="${labels.targetLanguagePlaceholder}" required>
             <datalist id="targetLanguageSuggestions">
               <option value="Japanese"></option>
               <option value="English"></option>
@@ -45,31 +57,31 @@ function render() {
 
           <label class="field">
             <span>Gemini Key</span>
-            <input id="geminiKey" type="password" autocomplete="off" placeholder="AIza..." value="${escapeAttribute(loadDeviceSavedKey())}" required>
+            <input id="geminiKey" type="password" autocomplete="off" placeholder="AIza..." value="${escapeAttribute(savedKey)}" required>
           </label>
 
           <label class="check">
-            <input id="saveKey" type="checkbox" ${loadDeviceSavedKey() ? "checked" : ""}>
-            <span>この端末に保存</span>
+            <input id="saveKey" type="checkbox" ${savedKey ? "checked" : ""}>
+            <span>${labels.saveKey}</span>
           </label>
 
-          <p class="note">Gemini KeyとPDFはこのブラウザからGemini APIへ送信されます。このアプリのサーバーには保存されません。</p>
+          <p class="note">${labels.privacyNote}</p>
 
-          <button class="primary" id="startButton" type="submit" ${state.running ? "disabled" : ""}>変換を開始</button>
-          <a class="secondary ${state.portableHtml ? "" : "disabled"}" id="downloadLink" download="translated-study.html">HTMLをダウンロード</a>
+          <button class="primary" id="startButton" type="submit" ${state.running ? "disabled" : ""}>${state.running ? labels.running : labels.start}</button>
+          <a class="secondary ${state.portableHtml ? "" : "disabled"}" id="downloadLink" download="translated-study.html">${labels.download}</a>
         </section>
 
         <section class="panel status-panel">
-          <h2>処理ステータス</h2>
+          <h2>${labels.statusTitle}</h2>
           <ol class="status-list" id="statusList">
-            <li>PDFを選択してください。</li>
+            <li>${labels.initialStatus}</li>
           </ol>
           <div class="summary" id="summary"></div>
         </section>
 
         <section class="panel preview-panel">
           <div class="preview-head">
-            <h2>プレビュー</h2>
+            <h2>${labels.preview}</h2>
           </div>
           <iframe id="preview" title="Translated HTML preview"></iframe>
         </section>
@@ -79,6 +91,11 @@ function render() {
 
   const workflow = document.querySelector("#workflow");
   const downloadLink = document.querySelector("#downloadLink");
+  document.querySelector("#uiLanguage").addEventListener("change", (event) => {
+    state.uiLanguage = event.target.value;
+    localStorage.setItem("uiLanguage", state.uiLanguage);
+    applyUiLanguage();
+  });
 
   if (state.portableHtml) {
     downloadLink.href = makeDownloadUrl(state.portableHtml);
@@ -86,6 +103,7 @@ function render() {
   }
 
   workflow.addEventListener("submit", runWorkflow);
+  document.documentElement.lang = state.uiLanguage;
 }
 
 async function runWorkflow(event) {
@@ -100,7 +118,7 @@ async function runWorkflow(event) {
   const shouldSaveKey = document.querySelector("#saveKey").checked;
 
   if (!pdfFile || !apiKey || !targetLanguage) {
-    addStatus("PDF、Gemini Key、翻訳先言語を入力してください。", "error");
+    addStatus(uiText().missingInputs, "error");
     return;
   }
 
@@ -111,28 +129,28 @@ async function runWorkflow(event) {
 
   try {
     persistGeminiKey(localStorage, apiKey, shouldSaveKey);
-    addStatus("Gemini Keyの扱いを反映しました。");
+    addStatus(uiText().keyApplied);
 
-    addStatus("PDFページ画像をブラウザ内で準備しています。");
+    addStatus(uiText().preparingSnapshots);
     const pageSnapshots = await renderPdfPageSnapshots(pdfFile);
-    addStatus(`${pageSnapshots.size}ページ分の画像を準備しました。`);
+    addStatus(uiText().snapshotsReady(pageSnapshots.size));
 
     const fileReference = await uploadPdfToGemini({
       apiKey,
       file: pdfFile,
       onStatus: addStatus,
     });
-    addStatus("PDFアップロードが完了しました。");
+    addStatus(uiText().uploadComplete);
 
-    addStatus("Document Analysis Passを実行しています。");
+    addStatus(uiText().analysisRunning);
     const documentModel = await analyzeDocument({ apiKey, fileReference, targetLanguage });
-    addStatus("Document Modelを受信しました。");
+    addStatus(uiText().analysisReceived);
 
     const segments = createTranslationSegments(documentModel, { pagesPerSegment: 2 });
     const translatedSegments = [];
 
     for (const segment of segments) {
-      addStatus(`Translation Segment ${segment.index + 1}/${segments.length} を翻訳しています。`);
+      addStatus(uiText().translatingSegment(segment.index + 1, segments.length));
       translatedSegments.push(await translateSegment({ apiKey, segment, targetLanguage }));
     }
 
@@ -147,13 +165,13 @@ async function runWorkflow(event) {
     const documentWithFigures = attachFigurePageSnapshots(translatedDocument, pageSnapshots);
 
     state.portableHtml = assemblePortableHtml(documentWithFigures);
-    addStatus("Portable HTMLを生成しました。");
+    addStatus(uiText().htmlGenerated);
     showSummary(documentWithFigures);
     setPreview(state.portableHtml);
     setDownload(state.portableHtml);
   } catch (error) {
     console.error(error);
-    addStatus(error.message || "変換に失敗しました。", "error");
+    addStatus(error.message || uiText().failed, "error");
   } finally {
     state.running = false;
     setRunning(false);
@@ -181,7 +199,7 @@ function showSummary(documentModel) {
   const pages = documentModel.pages?.length || 0;
   const terms = documentModel.preservedTerms?.length || 0;
   const figures = documentModel.embeddedFigureCount || countEmbeddedFigureBlocks(documentModel);
-  document.querySelector("#summary").textContent = `${pages}ページ、Preserved Term ${terms}件、Embedded Figure ${figures}件を含むHTMLを生成しました。`;
+  document.querySelector("#summary").textContent = uiText().summary(pages, terms, figures);
 }
 
 function countEmbeddedFigureBlocks(documentModel) {
@@ -193,7 +211,7 @@ function countEmbeddedFigureBlocks(documentModel) {
 
 function setRunning(isRunning) {
   document.querySelector("#startButton").disabled = isRunning;
-  document.querySelector("#startButton").textContent = isRunning ? "処理中..." : "変換を開始";
+  document.querySelector("#startButton").textContent = isRunning ? uiText().running : uiText().start;
 }
 
 function setPreview(html) {
@@ -225,4 +243,114 @@ function escapeAttribute(value) {
     .replaceAll("<", "&lt;")
     .replaceAll(">", "&gt;")
     .replaceAll('"', "&quot;");
+}
+
+function applyUiLanguage() {
+  const labels = uiText();
+  document.documentElement.lang = state.uiLanguage;
+  document.querySelector(".topbar p").textContent = labels.tagline;
+  document.querySelector(".ui-language span").textContent = labels.uiLanguage;
+  document.querySelector(".controls .field:nth-of-type(2) span").textContent = labels.targetLanguage;
+  document.querySelector("#targetLanguage").placeholder = labels.targetLanguagePlaceholder;
+  document.querySelector(".check span").textContent = labels.saveKey;
+  document.querySelector(".note").textContent = labels.privacyNote;
+  document.querySelector("#startButton").textContent = state.running ? labels.running : labels.start;
+  document.querySelector("#downloadLink").textContent = labels.download;
+  document.querySelector(".status-panel h2").textContent = labels.statusTitle;
+  document.querySelector(".preview-panel h2").textContent = labels.preview;
+
+  const statusItems = document.querySelectorAll("#statusList li");
+  if (statusItems.length === 1 && isInitialStatusText(statusItems[0].textContent)) {
+    statusItems[0].textContent = labels.initialStatus;
+  }
+}
+
+function isInitialStatusText(value) {
+  return Object.values(uiTextDictionary()).some((labels) => labels.initialStatus === value);
+}
+
+function uiText() {
+  const dictionary = uiTextDictionary();
+
+  return dictionary[state.uiLanguage] || dictionary.ja;
+}
+
+function uiTextDictionary() {
+  return {
+    ja: {
+      tagline: "Gemini KeyでPDFを学習用の翻訳HTMLに変換します。",
+      uiLanguage: "UI",
+      targetLanguage: "翻訳先言語",
+      targetLanguagePlaceholder: "例: Japanese, Japanese for high school students, 簡体字中国語",
+      saveKey: "この端末に保存",
+      privacyNote: "Gemini KeyとPDFはこのブラウザからGemini APIへ送信されます。このアプリのサーバーには保存されません。",
+      start: "変換を開始",
+      running: "処理中...",
+      download: "HTMLをダウンロード",
+      statusTitle: "処理ステータス",
+      initialStatus: "PDFを選択してください。",
+      preview: "プレビュー",
+      missingInputs: "PDF、Gemini Key、翻訳先言語を入力してください。",
+      keyApplied: "Gemini Keyの扱いを反映しました。",
+      preparingSnapshots: "PDFページ画像をブラウザ内で準備しています。",
+      snapshotsReady: (count) => `${count}ページ分の画像を準備しました。`,
+      uploadComplete: "PDFアップロードが完了しました。",
+      analysisRunning: "Document Analysis Passを実行しています。",
+      analysisReceived: "Document Modelを受信しました。",
+      translatingSegment: (current, total) => `Translation Segment ${current}/${total} を翻訳しています。`,
+      htmlGenerated: "Portable HTMLを生成しました。",
+      failed: "変換に失敗しました。",
+      summary: (pages, terms, figures) => `${pages}ページ、Preserved Term ${terms}件、Embedded Figure ${figures}件を含むHTMLを生成しました。`,
+    },
+    en: {
+      tagline: "Convert PDFs into study-ready translated HTML with your Gemini Key.",
+      uiLanguage: "UI",
+      targetLanguage: "Target language",
+      targetLanguagePlaceholder: "e.g. Japanese, Japanese for high school students, Simplified Chinese",
+      saveKey: "Save on this device",
+      privacyNote: "Your Gemini Key and PDF are sent from this browser to the Gemini API. They are not stored on this app's server.",
+      start: "Start conversion",
+      running: "Processing...",
+      download: "Download HTML",
+      statusTitle: "Status",
+      initialStatus: "Select a PDF.",
+      preview: "Preview",
+      missingInputs: "Enter a PDF, Gemini Key, and target language.",
+      keyApplied: "Gemini Key preference applied.",
+      preparingSnapshots: "Preparing PDF page images in the browser.",
+      snapshotsReady: (count) => `Prepared images for ${count} pages.`,
+      uploadComplete: "PDF upload complete.",
+      analysisRunning: "Running Document Analysis Pass.",
+      analysisReceived: "Received Document Model.",
+      translatingSegment: (current, total) => `Translating Segment ${current}/${total}.`,
+      htmlGenerated: "Generated Portable HTML.",
+      failed: "Conversion failed.",
+      summary: (pages, terms, figures) => `Generated HTML with ${pages} pages, ${terms} Preserved Terms, and ${figures} Embedded Figures.`,
+    },
+    ko: {
+      tagline: "Gemini Key로 PDF를 학습용 번역 HTML로 변환합니다.",
+      uiLanguage: "UI",
+      targetLanguage: "번역 대상 언어",
+      targetLanguagePlaceholder: "예: Japanese, Japanese for high school students, Simplified Chinese",
+      saveKey: "이 기기에 저장",
+      privacyNote: "Gemini Key와 PDF는 이 브라우저에서 Gemini API로 전송됩니다. 이 앱의 서버에는 저장되지 않습니다.",
+      start: "변환 시작",
+      running: "처리 중...",
+      download: "HTML 다운로드",
+      statusTitle: "처리 상태",
+      initialStatus: "PDF를 선택하세요.",
+      preview: "미리보기",
+      missingInputs: "PDF, Gemini Key, 번역 대상 언어를 입력하세요.",
+      keyApplied: "Gemini Key 설정을 반영했습니다.",
+      preparingSnapshots: "브라우저에서 PDF 페이지 이미지를 준비하고 있습니다.",
+      snapshotsReady: (count) => `${count}페이지의 이미지를 준비했습니다.`,
+      uploadComplete: "PDF 업로드가 완료되었습니다.",
+      analysisRunning: "Document Analysis Pass를 실행하고 있습니다.",
+      analysisReceived: "Document Model을 받았습니다.",
+      translatingSegment: (current, total) => `Translation Segment ${current}/${total} 번역 중입니다.`,
+      htmlGenerated: "Portable HTML을 생성했습니다.",
+      failed: "변환에 실패했습니다.",
+      summary: (pages, terms, figures) => `${pages}페이지, Preserved Term ${terms}개, Embedded Figure ${figures}개를 포함한 HTML을 생성했습니다.`,
+    },
+  };
 }
