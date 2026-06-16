@@ -163,12 +163,8 @@ function extractFirstJsonObject(source) {
 
 function jsonGenerationConfig(schema) {
   return {
-    responseFormat: {
-      text: {
-        mimeType: "application/json",
-        schema,
-      },
-    },
+    responseMimeType: "application/json",
+    responseSchema: schema,
   };
 }
 
