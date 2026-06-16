@@ -1,4 +1,4 @@
-import { uploadPdfToGemini, analyzeDocument, translateSegment } from "./lib/geminiClient.js";
+import { DEFAULT_MODEL, uploadPdfToGemini, analyzeDocument, listGeminiModels, translateSegment } from "./lib/geminiClient.js";
 import { loadDeviceSavedKey, persistGeminiKey } from "./lib/keyStorage.js";
 import { createTranslationSegments } from "./lib/translationSegments.js";
 import { mergeTranslatedSegments } from "./lib/documentModel.js";
@@ -11,6 +11,7 @@ const state = {
   portableHtml: "",
   running: false,
   uiLanguage: localStorage.getItem("uiLanguage") || "ja",
+  models: [],
 };
 
 render();
@@ -62,6 +63,15 @@ function render() {
             <input id="geminiKey" type="password" autocomplete="off" placeholder="AIza..." value="${escapeAttribute(savedKey)}" required>
           </label>
 
+          <label class="field">
+            <span>${labels.model}</span>
+            <select id="geminiModel">
+              ${renderModelOptions()}
+            </select>
+          </label>
+
+          <button class="secondary model-loader" id="loadModelsButton" type="button">${labels.loadModels}</button>
+
           <label class="check">
             <input id="saveKey" type="checkbox" ${savedKey ? "checked" : ""}>
             <span>${labels.saveKey}</span>
@@ -93,6 +103,8 @@ function render() {
 
   const workflow = document.querySelector("#workflow");
   const downloadLink = document.querySelector("#downloadLink");
+  document.querySelector("#loadModelsButton").addEventListener("click", loadModels);
+  document.querySelector("#geminiModel").addEventListener("change", persistSelectedModel);
   document.querySelector("#uiLanguage").addEventListener("change", (event) => {
     state.uiLanguage = event.target.value;
     localStorage.setItem("uiLanguage", state.uiLanguage);
@@ -116,6 +128,7 @@ async function runWorkflow(event) {
 
   const pdfFile = document.querySelector("#pdfFile").files[0];
   const apiKey = document.querySelector("#geminiKey").value.trim();
+  const model = document.querySelector("#geminiModel").value || DEFAULT_MODEL;
   const targetLanguage = document.querySelector("#targetLanguage").value.trim();
   const shouldSaveKey = document.querySelector("#saveKey").checked;
 
@@ -145,7 +158,7 @@ async function runWorkflow(event) {
     addStatus(uiText().uploadComplete);
 
     addStatus(uiText().analysisRunning);
-    const documentModel = await analyzeDocument({ apiKey, fileReference, targetLanguage });
+    const documentModel = await analyzeDocument({ apiKey, fileReference, targetLanguage, model });
     addStatus(uiText().analysisReceived);
 
     const segments = createTranslationSegments(documentModel);
@@ -153,7 +166,7 @@ async function runWorkflow(event) {
 
     for (const segment of segments) {
       addStatus(uiText().translatingSegment(segment.index + 1, segments.length));
-      translatedSegments.push(await translateSegment({ apiKey, segment, targetLanguage }));
+      translatedSegments.push(await translateSegment({ apiKey, segment, targetLanguage, model }));
     }
 
     const translatedDocument = mergeTranslatedSegments(
@@ -226,6 +239,54 @@ function setDownload(html) {
   link.classList.remove("disabled");
 }
 
+async function loadModels() {
+  const apiKey = document.querySelector("#geminiKey").value.trim();
+  if (!apiKey) {
+    addStatus(uiText().modelKeyRequired, "error");
+    return;
+  }
+
+  const button = document.querySelector("#loadModelsButton");
+  button.disabled = true;
+  button.textContent = uiText().loadingModels;
+
+  try {
+    const models = await listGeminiModels({ apiKey });
+    state.models = models;
+    const select = document.querySelector("#geminiModel");
+    const previous = select.value;
+    select.innerHTML = renderModelOptions(previous);
+    if (models.some((model) => model.id === previous)) {
+      select.value = previous;
+    }
+    persistSelectedModel({ target: select });
+    addStatus(uiText().modelsLoaded(models.length));
+  } catch (error) {
+    console.error(error);
+    addStatus(error.message || uiText().modelsFailed, "error");
+  } finally {
+    button.disabled = false;
+    button.textContent = uiText().loadModels;
+  }
+}
+
+function renderModelOptions(preferredModel = localStorage.getItem("geminiModel") || DEFAULT_MODEL) {
+  const models = state.models.length
+    ? state.models
+    : [{ id: preferredModel, displayName: preferredModel, description: "" }];
+
+  return models
+    .map((model) => {
+      const label = model.displayName === model.id ? model.id : `${model.displayName} (${model.id})`;
+      return `<option value="${escapeAttribute(model.id)}" ${model.id === preferredModel ? "selected" : ""}>${escapeHtml(label)}</option>`;
+    })
+    .join("");
+}
+
+function persistSelectedModel(event) {
+  localStorage.setItem("geminiModel", event.target.value || DEFAULT_MODEL);
+}
+
 function makeDownloadUrl(html) {
   return URL.createObjectURL(new Blob([html], { type: "text/html;charset=utf-8" }));
 }
@@ -240,11 +301,17 @@ function languageCode(language) {
 }
 
 function escapeAttribute(value) {
+  return escapeHtml(value)
+    .replaceAll("`", "&#96;");
+}
+
+function escapeHtml(value) {
   return String(value)
     .replaceAll("&", "&amp;")
     .replaceAll("<", "&lt;")
     .replaceAll(">", "&gt;")
-    .replaceAll('"', "&quot;");
+    .replaceAll('"', "&quot;")
+    .replaceAll("'", "&#39;");
 }
 
 function applyUiLanguage() {
@@ -254,6 +321,8 @@ function applyUiLanguage() {
   document.querySelector(".ui-language span").textContent = labels.uiLanguage;
   document.querySelector(".controls .field:nth-of-type(2) span").textContent = labels.targetLanguage;
   document.querySelector("#targetLanguage").placeholder = labels.targetLanguagePlaceholder;
+  document.querySelector(".controls .field:nth-of-type(4) span").textContent = labels.model;
+  document.querySelector("#loadModelsButton").textContent = labels.loadModels;
   document.querySelector(".check span").textContent = labels.saveKey;
   document.querySelector(".note").textContent = labels.privacyNote;
   document.querySelector("#startButton").textContent = state.running ? labels.running : labels.start;
@@ -284,6 +353,12 @@ function uiTextDictionary() {
       uiLanguage: "UI",
       targetLanguage: "翻訳先言語",
       targetLanguagePlaceholder: "例: Japanese, Japanese for high school students, 簡体字中国語",
+      model: "Geminiモデル",
+      loadModels: "モデル一覧を取得",
+      loadingModels: "取得中...",
+      modelKeyRequired: "モデル一覧の取得にはGemini Keyを入力してください。",
+      modelsLoaded: (count) => `${count}件のGeminiモデルを読み込みました。`,
+      modelsFailed: "モデル一覧の取得に失敗しました。",
       saveKey: "この端末に保存",
       privacyNote: "Gemini KeyとPDFはこのブラウザからGemini APIへ送信されます。このアプリのサーバーには保存されません。",
       start: "変換を開始",
@@ -309,6 +384,12 @@ function uiTextDictionary() {
       uiLanguage: "UI",
       targetLanguage: "Target language",
       targetLanguagePlaceholder: "e.g. Japanese, Japanese for high school students, Simplified Chinese",
+      model: "Gemini model",
+      loadModels: "Load models",
+      loadingModels: "Loading...",
+      modelKeyRequired: "Enter a Gemini Key to load the model list.",
+      modelsLoaded: (count) => `Loaded ${count} Gemini models.`,
+      modelsFailed: "Failed to load the model list.",
       saveKey: "Save on this device",
       privacyNote: "Your Gemini Key and PDF are sent from this browser to the Gemini API. They are not stored on this app's server.",
       start: "Start conversion",
@@ -334,6 +415,12 @@ function uiTextDictionary() {
       uiLanguage: "UI",
       targetLanguage: "번역 대상 언어",
       targetLanguagePlaceholder: "예: Japanese, Japanese for high school students, Simplified Chinese",
+      model: "Gemini 모델",
+      loadModels: "모델 목록 불러오기",
+      loadingModels: "불러오는 중...",
+      modelKeyRequired: "모델 목록을 불러오려면 Gemini Key를 입력하세요.",
+      modelsLoaded: (count) => `Gemini 모델 ${count}개를 불러왔습니다.`,
+      modelsFailed: "모델 목록을 불러오지 못했습니다.",
       saveKey: "이 기기에 저장",
       privacyNote: "Gemini Key와 PDF는 이 브라우저에서 Gemini API로 전송됩니다. 이 앱의 서버에는 저장되지 않습니다.",
       start: "변환 시작",
@@ -359,6 +446,12 @@ function uiTextDictionary() {
       uiLanguage: "UI",
       targetLanguage: "目标语言",
       targetLanguagePlaceholder: "例如：Japanese, Japanese for high school students, 简体中文",
+      model: "Gemini 模型",
+      loadModels: "加载模型列表",
+      loadingModels: "加载中...",
+      modelKeyRequired: "请输入 Gemini Key 以加载模型列表。",
+      modelsLoaded: (count) => `已加载 ${count} 个 Gemini 模型。`,
+      modelsFailed: "模型列表加载失败。",
       saveKey: "保存在此设备上",
       privacyNote: "Gemini Key 和 PDF 会从此浏览器发送到 Gemini API。本应用的服务器不会保存它们。",
       start: "开始转换",
@@ -384,6 +477,12 @@ function uiTextDictionary() {
       uiLanguage: "UI",
       targetLanguage: "目標語言",
       targetLanguagePlaceholder: "例如：Japanese, Japanese for high school students, 繁體中文",
+      model: "Gemini 模型",
+      loadModels: "載入模型清單",
+      loadingModels: "載入中...",
+      modelKeyRequired: "請輸入 Gemini Key 以載入模型清單。",
+      modelsLoaded: (count) => `已載入 ${count} 個 Gemini 模型。`,
+      modelsFailed: "模型清單載入失敗。",
       saveKey: "儲存在此裝置上",
       privacyNote: "Gemini Key 和 PDF 會從此瀏覽器傳送到 Gemini API。本應用程式的伺服器不會儲存它們。",
       start: "開始轉換",

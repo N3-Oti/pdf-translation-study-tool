@@ -148,6 +148,10 @@ select {
   background: #f4f9fc;
 }
 
+.model-loader {
+  margin-bottom: 14px;
+}
+
 .status-panel h2,
 .preview-panel h2 {
   margin: 0 0 12px;

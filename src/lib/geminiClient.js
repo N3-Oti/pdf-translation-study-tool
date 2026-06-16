@@ -8,6 +8,34 @@ import {
 
 const BASE_URL = "https://generativelanguage.googleapis.com";
 
+export { DEFAULT_MODEL } from "./geminiRequests.js";
+
+export async function listGeminiModels({ apiKey, fetchImpl = fetch }) {
+  const models = [];
+  let pageToken = "";
+
+  do {
+    const url = new URL(`${BASE_URL}/v1beta/models`);
+    url.searchParams.set("key", apiKey);
+    url.searchParams.set("pageSize", "1000");
+    if (pageToken) {
+      url.searchParams.set("pageToken", pageToken);
+    }
+
+    const response = await fetchImpl(url);
+    if (!response.ok) {
+      const errorText = await response.text().catch(() => "");
+      throw new Error(`Gemini model list failed: ${response.status} ${errorText}`.trim());
+    }
+
+    const json = await response.json();
+    models.push(...filterGenerativeGeminiModels(json.models || []));
+    pageToken = json.nextPageToken || "";
+  } while (pageToken);
+
+  return models;
+}
+
 export async function uploadPdfToGemini({ apiKey, file, fetchImpl = fetch, onStatus = () => {} }) {
   onStatus("Preparing Gemini file upload...");
   const startResponse = await fetchImpl(`${BASE_URL}/upload/v1beta/files?key=${encodeURIComponent(apiKey)}`, {
@@ -85,7 +113,7 @@ export async function waitForGeminiFile({ apiKey, file, fetchImpl = fetch, onSta
 
 export async function analyzeDocument({ apiKey, fileReference, targetLanguage, fetchImpl = fetch, model = DEFAULT_MODEL }) {
   const response = await fetchImpl(
-    `${BASE_URL}/v1beta/models/${encodeURIComponent(model)}:generateContent?key=${encodeURIComponent(apiKey)}`,
+    `${BASE_URL}/v1beta/models/${encodeURIComponent(modelId(model))}:generateContent?key=${encodeURIComponent(apiKey)}`,
     {
       method: "POST",
       headers: { "Content-Type": "application/json" },
@@ -104,7 +132,7 @@ export async function analyzeDocument({ apiKey, fileReference, targetLanguage, f
 
 export async function translateSegment({ apiKey, segment, targetLanguage, fetchImpl = fetch, model = DEFAULT_MODEL }) {
   const response = await fetchImpl(
-    `${BASE_URL}/v1beta/models/${encodeURIComponent(model)}:generateContent?key=${encodeURIComponent(apiKey)}`,
+    `${BASE_URL}/v1beta/models/${encodeURIComponent(modelId(model))}:generateContent?key=${encodeURIComponent(apiKey)}`,
     {
       method: "POST",
       headers: { "Content-Type": "application/json" },
@@ -127,4 +155,30 @@ async function parseGeminiJsonResponse(response, label) {
 
 function delay(ms) {
   return new Promise((resolve) => setTimeout(resolve, ms));
+}
+
+function filterGenerativeGeminiModels(models) {
+  return models
+    .filter((model) => {
+      const name = model.name || "";
+      const methods = model.supportedGenerationMethods || [];
+      const searchable = [model.name, model.baseModelId, model.displayName, model.description].join(" ").toLowerCase();
+      return name.startsWith("models/gemini") && methods.includes("generateContent") && !searchable.includes("tts") && !searchable.includes("live");
+    })
+    .map((model) => {
+      const id = model.baseModelId || modelId(model.name);
+      return {
+        id,
+        name: model.name,
+        displayName: model.displayName || id,
+        description: model.description || "",
+        inputTokenLimit: model.inputTokenLimit,
+        outputTokenLimit: model.outputTokenLimit,
+      };
+    })
+    .sort((left, right) => left.id.localeCompare(right.id));
+}
+
+function modelId(model) {
+  return String(model || DEFAULT_MODEL).replace(/^models\//, "");
 }
