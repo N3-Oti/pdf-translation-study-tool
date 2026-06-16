@@ -2,6 +2,8 @@
 
 [English](README.en.md)
 
+[Demo](https://n3-oti.github.io/pdf-translation-study-tool/)
+
 アップロードしたPDFを解析・翻訳し、学習用HTMLとしてダウンロードできる静的ブラウザアプリです。
 Gemini APIの呼び出しは利用者のブラウザから直接行い、利用者自身のGemini Keyを使います。
 
