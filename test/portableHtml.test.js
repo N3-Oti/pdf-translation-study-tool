@@ -22,6 +22,10 @@ test("assembles a portable study HTML document with tables and glossary anchors"
           },
         ],
       },
+      {
+        pageNumber: 9,
+        blocks: [{ id: "p9-b1", type: "paragraph", text: "次のページです。" }],
+      },
     ],
     preservedTerms: [
       {
@@ -35,13 +39,17 @@ test("assembles a portable study HTML document with tables and glossary anchors"
 
   assert.match(html, /<!doctype html>/i);
   assert.match(html, /<html lang="ja">/);
+  assert.match(html, /class="document__stats"/);
+  assert.match(html, /class="page-nav"/);
+  assert.match(html, /class="page__body"/);
   assert.match(html, /id="p8-b2"/);
   assert.match(html, /Vibe CodingはカジュアルなAI支援開発です。\n検証を強化します。/);
   assert.match(html, /<ul id="p8-list1" class="text-list">/);
   assert.match(html, /<li>仕様を分ける<\/li>/);
   assert.match(html, /white-space: pre-line/);
-  assert.match(html, /<table/);
+  assert.match(html, /<div class="table-wrap"><table/);
   assert.match(html, /Glossary &amp; Index/);
+  assert.match(html, /class="glossary__item"/);
   assert.match(html, /href="#p8-b2"/);
   assert.match(html, /Vibe Coding/);
 });
