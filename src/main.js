@@ -148,7 +148,7 @@ async function runWorkflow(event) {
     const documentModel = await analyzeDocument({ apiKey, fileReference, targetLanguage });
     addStatus(uiText().analysisReceived);
 
-    const segments = createTranslationSegments(documentModel, { pagesPerSegment: 2 });
+    const segments = createTranslationSegments(documentModel);
     const translatedSegments = [];
 
     for (const segment of segments) {

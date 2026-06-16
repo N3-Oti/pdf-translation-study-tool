@@ -11,6 +11,8 @@ test("builds a document analysis request that references the uploaded PDF file",
 
   assert.equal(request.contents[0].parts[0].file_data.file_uri, "https://generativelanguage.googleapis.com/v1beta/files/abc");
   assert.equal(request.contents[0].parts[0].file_data.mime_type, "application/pdf");
+  assert.equal(request.generationConfig.responseFormat.text.mimeType, "application/json");
+  assert.equal(request.generationConfig.responseFormat.text.schema.properties.pages.type, "array");
   assert.match(request.contents[0].parts[1].text, /Document Model/);
   assert.match(request.contents[0].parts[1].text, /Learning Tables/);
   assert.match(request.contents[0].parts[1].text, /Preserved Terms/);
@@ -36,6 +38,8 @@ test("builds a translation request that preserves readable document structure", 
   });
 
   const prompt = request.contents[0].parts[0].text;
+  assert.equal(request.generationConfig.responseFormat.text.mimeType, "application/json");
+  assert.equal(request.generationConfig.responseFormat.text.schema.required[0], "pages");
   assert.match(prompt, /Japanese for high school students/);
   assert.match(prompt, /list item/);
   assert.match(prompt, /Do not merge multiple paragraphs/);
@@ -46,4 +50,10 @@ test("extracts a JSON object from fenced Gemini text", () => {
   const parsed = extractJsonObject('```json\n{"title":"Demo","pages":[]}\n```');
 
   assert.deepEqual(parsed, { title: "Demo", pages: [] });
+});
+
+test("extracts the first complete JSON object when Gemini appends extra text", () => {
+  const parsed = extractJsonObject('{"title":"Demo","text":"brace } inside string","pages":[]}\nExtra note');
+
+  assert.deepEqual(parsed, { title: "Demo", text: "brace } inside string", pages: [] });
 });

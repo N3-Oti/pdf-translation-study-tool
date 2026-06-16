@@ -23,3 +23,18 @@ test("creates page-based translation segments without losing block identifiers",
   assert.equal(segments[0].pages[1].blocks[0].id, "p2-b1");
   assert.equal(segments[0].preservedTerms[0].term, "Harness");
 });
+
+test("uses larger default segments to reduce long-document request count", () => {
+  const segments = createTranslationSegments({
+    pages: Array.from({ length: 49 }, (_, index) => ({
+      pageNumber: index + 1,
+      blocks: [{ id: `p${index + 1}-b1`, type: "paragraph", text: "Text" }],
+    })),
+  });
+
+  assert.equal(segments.length, 13);
+  assert.deepEqual(
+    segments.map((segment) => segment.pages.length),
+    [4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 1],
+  );
+});
